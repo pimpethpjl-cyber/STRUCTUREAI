@@ -1,0 +1,1228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StructureAI — RC & Steel Design Assistant</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0c0f;
+    --surface: #111318;
+    --surface2: #181c23;
+    --border: #1e2530;
+    --border2: #252d3a;
+    --accent: #e8a020;
+    --accent2: #f0c060;
+    --steel: #4a9eff;
+    --concrete: #c8a882;
+    --text: #e8eaf0;
+    --text2: #8a94a8;
+    --text3: #50596a;
+    --green: #3dd68c;
+    --red: #ff5c5c;
+    --mono: 'DM Mono', monospace;
+    --sans: 'DM Sans', sans-serif;
+    --display: 'Bebas Neue', sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 24px;
+    height: 56px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    flex-shrink: 0;
+    position: relative;
+    z-index: 10;
+  }
+
+  .logo { display: flex; align-items: baseline; gap: 10px; }
+  .logo-text { font-family: var(--display); font-size: 26px; letter-spacing: 2px; color: var(--accent); line-height: 1; }
+  .logo-sub { font-family: var(--mono); font-size: 10px; color: var(--text3); letter-spacing: 3px; text-transform: uppercase; }
+
+  .header-badges { display: flex; gap: 8px; }
+  .badge { font-family: var(--mono); font-size: 10px; letter-spacing: 1.5px; padding: 4px 10px; border-radius: 3px; text-transform: uppercase; border: 1px solid; }
+  .badge-steel { color: var(--steel); border-color: var(--steel); background: rgba(74,158,255,0.06); }
+  .badge-concrete { color: var(--concrete); border-color: var(--concrete); background: rgba(200,168,130,0.06); }
+
+  .api-status {
+    display: flex; align-items: center; gap: 6px;
+    font-family: var(--mono); font-size: 11px; color: var(--green);
+    padding: 6px 12px; border: 1px solid rgba(61,214,140,0.3); border-radius: 4px;
+  }
+  .status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); box-shadow: 0 0 6px var(--green); }
+
+  .app { display: flex; flex: 1; overflow: hidden; }
+
+  .sidebar {
+    width: 280px; background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex; flex-direction: column; flex-shrink: 0; overflow-y: auto;
+  }
+
+  .sidebar-section { padding: 16px; border-bottom: 1px solid var(--border); }
+  .sidebar-label { font-family: var(--mono); font-size: 9px; letter-spacing: 3px; text-transform: uppercase; color: var(--text3); margin-bottom: 10px; }
+
+  .quick-btn {
+    display: block; width: 100%; text-align: left;
+    padding: 10px 12px; background: var(--surface2);
+    border: 1px solid var(--border2); border-radius: 5px;
+    color: var(--text2); font-family: var(--sans); font-size: 12px;
+    cursor: pointer; margin-bottom: 6px; transition: all 0.15s; line-height: 1.4;
+  }
+  .quick-btn:hover { border-color: var(--accent); color: var(--text); background: rgba(232,160,32,0.06); }
+  .quick-btn:last-child { margin-bottom: 0; }
+  .quick-btn .btn-tag {
+    display: inline-block; font-family: var(--mono); font-size: 9px;
+    letter-spacing: 1px; padding: 1px 5px; border-radius: 2px;
+    margin-right: 6px; text-transform: uppercase;
+  }
+  .tag-aci { background: rgba(200,168,130,0.15); color: var(--concrete); }
+  .tag-aisc { background: rgba(74,158,255,0.15); color: var(--steel); }
+
+  .unit-toggle { display: flex; background: var(--surface2); border: 1px solid var(--border2); border-radius: 5px; overflow: hidden; }
+  .unit-btn { flex: 1; padding: 7px; background: none; border: none; color: var(--text3); font-family: var(--mono); font-size: 11px; cursor: pointer; letter-spacing: 1px; transition: all 0.2s; }
+  .unit-btn.active { background: var(--accent); color: #000; font-weight: 500; }
+
+  .code-toggles { display: flex; flex-direction: column; gap: 6px; }
+  .code-toggle-item {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 10px; background: var(--surface2);
+    border: 1px solid var(--border2); border-radius: 5px;
+    cursor: pointer; transition: all 0.15s;
+  }
+  .code-toggle-item.active-aci { border-color: var(--concrete); background: rgba(200,168,130,0.07); }
+  .code-toggle-item.active-aisc { border-color: var(--steel); background: rgba(74,158,255,0.07); }
+  .code-name { font-family: var(--mono); font-size: 11px; color: var(--text2); }
+  .toggle-switch { width: 30px; height: 16px; background: var(--border2); border-radius: 8px; position: relative; transition: background 0.2s; }
+  .toggle-switch::after { content: ''; position: absolute; width: 10px; height: 10px; background: var(--text3); border-radius: 50%; top: 3px; left: 3px; transition: all 0.2s; }
+  .code-toggle-item.active-aci .toggle-switch { background: var(--concrete); }
+  .code-toggle-item.active-aci .toggle-switch::after { left: 17px; background: #fff; }
+  .code-toggle-item.active-aisc .toggle-switch { background: var(--steel); }
+  .code-toggle-item.active-aisc .toggle-switch::after { left: 17px; background: #fff; }
+
+  .chat-area { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+  .messages { flex: 1; overflow-y: auto; padding: 24px; display: flex; flex-direction: column; gap: 20px; scroll-behavior: smooth; }
+  .messages::-webkit-scrollbar { width: 4px; }
+  .messages::-webkit-scrollbar-track { background: transparent; }
+  .messages::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+  .welcome {
+    display: flex; flex-direction: column; align-items: center;
+    justify-content: center; height: 100%; text-align: center; padding: 40px;
+    animation: fadeUp 0.6s ease forwards;
+  }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+  .welcome-icon { font-size: 56px; margin-bottom: 20px; }
+  .welcome h1 { font-family: var(--display); font-size: 48px; letter-spacing: 3px; color: var(--accent); line-height: 1; margin-bottom: 12px; }
+  .welcome p { color: var(--text2); font-size: 15px; max-width: 500px; line-height: 1.6; margin-bottom: 32px; }
+
+  .welcome-codes { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; margin-bottom: 32px; }
+  .code-pill { font-family: var(--mono); font-size: 11px; padding: 6px 14px; border-radius: 20px; border: 1px solid; letter-spacing: 1px; }
+  .pill-aci { border-color: var(--concrete); color: var(--concrete); background: rgba(200,168,130,0.08); }
+  .pill-aisc { border-color: var(--steel); color: var(--steel); background: rgba(74,158,255,0.08); }
+
+  .welcome-examples { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; max-width: 600px; width: 100%; }
+  .example-card { background: var(--surface); border: 1px solid var(--border2); border-radius: 8px; padding: 14px; text-align: left; cursor: pointer; transition: all 0.2s; }
+  .example-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+  .example-card .ex-label { font-family: var(--mono); font-size: 9px; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 6px; }
+  .example-card .ex-text { font-size: 12px; color: var(--text2); line-height: 1.4; }
+
+  .msg { display: flex; gap: 14px; animation: msgIn 0.3s ease forwards; max-width: 100%; }
+  @keyframes msgIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+  .msg-avatar { width: 32px; height: 32px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; margin-top: 2px; }
+  .msg-avatar.user { background: var(--surface2); border: 1px solid var(--border2); }
+  .msg-avatar.ai { background: rgba(232,160,32,0.15); border: 1px solid rgba(232,160,32,0.3); }
+
+  .msg-content { flex: 1; min-width: 0; }
+  .msg-role { font-family: var(--mono); font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: var(--text3); margin-bottom: 6px; }
+  .msg.ai .msg-role { color: var(--accent); }
+
+  .msg-body { font-size: 14px; line-height: 1.7; color: var(--text); }
+  .msg-body h3 { font-family: var(--mono); font-size: 12px; letter-spacing: 2px; text-transform: uppercase; color: var(--accent); margin: 18px 0 10px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+  .msg-body strong { color: var(--accent2); font-weight: 600; }
+  .msg-body em { color: var(--steel); font-style: normal; }
+
+  .calc-block { background: var(--surface2); border: 1px solid var(--border2); border-left: 3px solid var(--accent); border-radius: 6px; padding: 14px 16px; margin: 12px 0; font-family: var(--mono); font-size: 12px; line-height: 1.8; white-space: pre-wrap; overflow-x: auto; }
+  .check-pass { color: var(--green); font-family: var(--mono); font-size: 12px; display: inline-flex; align-items: center; gap: 6px; background: rgba(61,214,140,0.08); border: 1px solid rgba(61,214,140,0.2); padding: 3px 10px; border-radius: 4px; margin: 2px 4px; }
+  .check-fail { color: var(--red); font-family: var(--mono); font-size: 12px; display: inline-flex; align-items: center; gap: 6px; background: rgba(255,92,92,0.08); border: 1px solid rgba(255,92,92,0.2); padding: 3px 10px; border-radius: 4px; margin: 2px 4px; }
+  .warning-box { background: rgba(232,160,32,0.08); border: 1px solid rgba(232,160,32,0.25); border-radius: 6px; padding: 10px 14px; margin: 10px 0; font-size: 13px; color: var(--accent2); line-height: 1.5; }
+
+  /* ══════════ CROSS-SECTION DRAWING PANEL ══════════ */
+  .section-panel {
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    border-left: 3px solid var(--steel);
+    border-radius: 8px;
+    margin: 16px 0;
+    overflow: hidden;
+    animation: fadeUp 0.4s ease forwards;
+  }
+  .section-panel-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 16px;
+    background: rgba(74,158,255,0.05);
+    border-bottom: 1px solid var(--border);
+  }
+  .section-panel-title {
+    font-family: var(--mono); font-size: 10px; letter-spacing: 2px;
+    text-transform: uppercase; color: var(--steel);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .section-panel-title::before { content: ''; width: 8px; height: 8px; background: var(--steel); border-radius: 2px; display: block; }
+  .section-panel-sub { font-family: var(--mono); font-size: 9px; color: var(--text3); letter-spacing: 1px; }
+  .section-panel-body { display: flex; gap: 0; }
+  .section-svg-wrap {
+    flex: 0 0 320px; padding: 24px;
+    display: flex; align-items: center; justify-content: center;
+    border-right: 1px solid var(--border);
+    background: rgba(10,12,15,0.6);
+  }
+  .section-svg-wrap svg { max-width: 100%; height: auto; }
+  .section-details { flex: 1; padding: 20px; display: flex; flex-direction: column; gap: 12px; overflow: auto; }
+  .section-details-title { font-family: var(--mono); font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: var(--text3); margin-bottom: 4px; }
+  .dim-row { display: flex; align-items: baseline; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid var(--border); }
+  .dim-label { font-family: var(--mono); font-size: 11px; color: var(--text2); }
+  .dim-value { font-family: var(--mono); font-size: 12px; color: var(--accent2); font-weight: 500; }
+  .dim-code { font-family: var(--mono); font-size: 9px; color: var(--text3); }
+  .rebar-legend { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+  .rebar-chip { font-family: var(--mono); font-size: 10px; padding: 3px 8px; border-radius: 3px; border: 1px solid; letter-spacing: 0.5px; }
+  .chip-main { color: var(--concrete); border-color: var(--concrete); background: rgba(200,168,130,0.1); }
+  .chip-shear { color: #a78bfa; border-color: #a78bfa; background: rgba(167,139,250,0.1); }
+  .chip-steel { color: var(--steel); border-color: var(--steel); background: rgba(74,158,255,0.1); }
+  .prop-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .prop-item { background: var(--surface2); border: 1px solid var(--border2); border-radius: 5px; padding: 8px 10px; }
+  .prop-item-label { font-family: var(--mono); font-size: 9px; color: var(--text3); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 3px; }
+  .prop-item-val { font-family: var(--mono); font-size: 12px; color: var(--text); }
+
+  .input-area { padding: 16px 24px 20px; border-top: 1px solid var(--border); background: var(--surface); flex-shrink: 0; }
+  .input-wrap { display: flex; gap: 10px; align-items: flex-end; background: var(--surface2); border: 1px solid var(--border2); border-radius: 10px; padding: 10px 12px; transition: border-color 0.2s; }
+  .input-wrap:focus-within { border-color: var(--accent); }
+
+  #userInput { flex: 1; background: none; border: none; outline: none; color: var(--text); font-family: var(--sans); font-size: 14px; resize: none; max-height: 120px; line-height: 1.5; min-height: 22px; }
+  #userInput::placeholder { color: var(--text3); }
+
+  .send-btn { background: var(--accent); border: none; color: #000; width: 36px; height: 36px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 16px; transition: all 0.15s; font-weight: bold; }
+  .send-btn:hover { background: var(--accent2); transform: scale(1.05); }
+  .send-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+  .input-hints { display: flex; gap: 12px; margin-top: 8px; flex-wrap: wrap; }
+  .hint { font-family: var(--mono); font-size: 10px; color: var(--text3); letter-spacing: 0.5px; }
+
+  .thinking { display: flex; gap: 14px; align-items: flex-start; animation: msgIn 0.3s ease; }
+  .think-dots { display: flex; gap: 4px; padding-top: 6px; }
+  .think-dots span { width: 6px; height: 6px; background: var(--accent); border-radius: 50%; animation: pulse 1.2s ease infinite; }
+  .think-dots span:nth-child(2) { animation-delay: 0.2s; }
+  .think-dots span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes pulse { 0%, 100% { opacity: 0.3; transform: scale(0.8); } 50% { opacity: 1; transform: scale(1.1); } }
+  .think-label { font-family: var(--mono); font-size: 11px; color: var(--text3); padding-top: 4px; letter-spacing: 1px; }
+
+  .new-chat-btn { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: none; border: 1px solid var(--border2); border-radius: 5px; color: var(--text2); font-family: var(--mono); font-size: 10px; letter-spacing: 1px; text-transform: uppercase; cursor: pointer; margin: 12px 16px; width: calc(100% - 32px); justify-content: center; transition: all 0.2s; }
+  .new-chat-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  .sidebar::-webkit-scrollbar { width: 3px; }
+  .sidebar::-webkit-scrollbar-track { background: transparent; }
+  .sidebar::-webkit-scrollbar-thumb { background: var(--border2); }
+
+  .error-box { background: rgba(255,92,92,0.08); border: 1px solid rgba(255,92,92,0.3); border-radius: 6px; padding: 12px 16px; color: var(--red); font-size: 13px; line-height: 1.6; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <span class="logo-text">STRUCTUREAI</span>
+    <span class="logo-sub">RC &amp; Steel Design</span>
+  </div>
+  <div class="header-badges">
+    <span class="badge badge-concrete">ACI 318-19</span>
+    <span class="badge badge-steel">AISC 360-22</span>
+    <span class="badge badge-steel">AISC 341-22</span>
+  </div>
+  <div class="api-status">
+    <div class="status-dot"></div>
+    <span>Gemini 1.5 Pro · Ready</span>
+  </div>
+</header>
+
+<div class="app">
+  <aside class="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-label">Quick Design Checks</div>
+      <button class="quick-btn" onclick="sendQuick('rcBeamFlexure')">
+        <span class="btn-tag tag-aci">ACI</span>RC Beam Flexure
+      </button>
+      <button class="quick-btn" onclick="sendQuick('rcColumn')">
+        <span class="btn-tag tag-aci">ACI</span>RC Column Design
+      </button>
+      <button class="quick-btn" onclick="sendQuick('oneWaySlab')">
+        <span class="btn-tag tag-aci">ACI</span>One-Way Slab
+      </button>
+      <button class="quick-btn" onclick="sendQuick('spreadFooting')">
+        <span class="btn-tag tag-aci">ACI</span>Spread Footing
+      </button>
+      <button class="quick-btn" onclick="sendQuick('steelBeam')">
+        <span class="btn-tag tag-aisc">AISC</span>Steel Beam (LRFD)
+      </button>
+      <button class="quick-btn" onclick="sendQuick('steelColumn')">
+        <span class="btn-tag tag-aisc">AISC</span>Steel Column
+      </button>
+      <button class="quick-btn" onclick="sendQuick('momentConnection')">
+        <span class="btn-tag tag-aisc">AISC</span>Moment Connection
+      </button>
+      <button class="quick-btn" onclick="sendQuick('shearWall')">
+        <span class="btn-tag tag-aci">ACI</span>Shear Wall
+      </button>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-label">Design Philosophy</div>
+      <div class="unit-toggle">
+        <button class="unit-btn active" id="unitUS" onclick="setUnit('US')">US CUSTOMARY</button>
+        <button class="unit-btn" id="unitSI" onclick="setUnit('SI')">SI / METRIC</button>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-label">Active Codes</div>
+      <div class="code-toggles">
+        <div class="code-toggle-item active-aci" id="toggleACI" onclick="toggleCode('ACI')">
+          <span class="code-name">ACI 318-19 (RC)</span>
+          <div class="toggle-switch"></div>
+        </div>
+        <div class="code-toggle-item active-aisc" id="toggleAISC" onclick="toggleCode('AISC')">
+          <span class="code-name">AISC 360-22 (Steel)</span>
+          <div class="toggle-switch"></div>
+        </div>
+        <div class="code-toggle-item active-aisc" id="toggleAISCS" onclick="toggleCode('AISCS')">
+          <span class="code-name">AISC 341-22 (Seismic)</span>
+          <div class="toggle-switch"></div>
+        </div>
+        <div class="code-toggle-item" id="toggleASCE" onclick="toggleCode('ASCE')">
+          <span class="code-name">ASCE 7-22 (Loads)</span>
+          <div class="toggle-switch"></div>
+        </div>
+      </div>
+    </div>
+
+    <button class="new-chat-btn" onclick="newChat()">+ New Design Session</button>
+  </aside>
+
+  <div class="chat-area">
+    <div class="messages" id="messages">
+      <div class="welcome" id="welcome">
+        <div class="welcome-icon">🏗️</div>
+        <h1>STRUCTUREAI</h1>
+        <p>AI-powered structural design assistant for RC and Steel structures. Step-by-step calculations per AISC and ACI codes — with automatic cross-section diagrams.</p>
+        <div class="welcome-codes">
+          <span class="code-pill pill-aci">ACI 318-19</span>
+          <span class="code-pill pill-aisc">AISC 360-22</span>
+          <span class="code-pill pill-aisc">AISC 341-22</span>
+          <span class="code-pill pill-aci">LRFD / Strength Design</span>
+        </div>
+        <div class="welcome-examples">
+          <div class="example-card" onclick="sendQuick('steelBeamCheck')">
+            <div class="ex-label" style="color:var(--steel)">AISC</div>
+            <div class="ex-text">Check W-shape beam adequacy with moment & shear</div>
+          </div>
+          <div class="example-card" onclick="sendQuick('rcBeamRebar')">
+            <div class="ex-label" style="color:var(--concrete)">ACI</div>
+            <div class="ex-text">Size rebar for RC beam given moment demand</div>
+          </div>
+          <div class="example-card" onclick="sendQuick('loadCombinations')">
+            <div class="ex-label" style="color:var(--steel)">LOADS</div>
+            <div class="ex-text">Show LRFD/ASD load combinations</div>
+          </div>
+          <div class="example-card" onclick="sendQuick('asdVsLrfd')">
+            <div class="ex-label" style="color:var(--accent)">THEORY</div>
+            <div class="ex-text">ASD vs LRFD methodology comparison</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="input-area">
+      <div class="input-wrap">
+        <textarea id="userInput" placeholder="Describe your design problem... (e.g. 'Design RC beam for Mu = 150 kip-ft, b=14in, f\'c=4ksi')" rows="1" onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
+        <button class="send-btn" id="sendBtn" onclick="sendMessage()">↑</button>
+      </div>
+      <div class="input-hints">
+        <span class="hint">↵ Send · Shift+↵ New line</span>
+        <span class="hint">·</span>
+        <span class="hint">Cross-section diagram auto-generated from results</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ---------- ใส่ GEMINI API KEY ที่นี่ ----------
+const GEMINI_API_KEY = 'AIzaSyDSAHgDy8zf6R6mdNI1epqBFzuBm8lTxGU';
+// ---------------------------------------------
+
+let conversationHistory = [];
+let units = 'US';
+let activeCodes = { ACI: true, AISC: true, AISCS: true, ASCE: false };
+let isThinking = false;
+
+const PROMPTS = {
+  rcBeamFlexure: {
+    US: "Design a rectangular RC beam for a factored moment Mu = 150 kip-ft. Use f'c = 4000 psi, fy = 60 ksi, b = 14 in. Show full ACI 318-19 flexural design.",
+    SI: "Design a rectangular RC beam for a factored moment Mu = 200 kN·m. Use f'c = 28 MPa, fy = 420 MPa, b = 350 mm. Show full ACI 318-19 flexural design."
+  },
+  rcColumn: {
+    US: "Design an RC column for Pu = 400 kips and Mu = 80 kip-ft. Use f'c = 5000 psi, fy = 60 ksi, 14x14 in section. Check ACI 318-19 interaction diagram limits.",
+    SI: "Design an RC column for Pu = 1800 kN and Mu = 110 kN·m. Use f'c = 35 MPa, fy = 420 MPa, 350x350 mm section. Check ACI 318-19 interaction diagram limits."
+  },
+  oneWaySlab: {
+    US: "Design a one-way RC slab spanning 14 ft with a factored uniform load wu = 450 psf. f'c = 4000 psi, fy = 60 ksi. Show ACI minimum thickness and reinforcement.",
+    SI: "Design a one-way RC slab spanning 4.3 m with a factored uniform load wu = 21.5 kN/m². f'c = 28 MPa, fy = 420 MPa. Show ACI minimum thickness and reinforcement."
+  },
+  spreadFooting: {
+    US: "Design a rectangular spread footing for a column load of P = 300 kips (service) on soil with allowable bearing capacity qa = 3 ksf. f'c = 3000 psi, fy = 60 ksi. Per ACI 318-19.",
+    SI: "Design a rectangular spread footing for a column load of P = 1350 kN (service) on soil with allowable bearing capacity qa = 144 kPa. f'c = 21 MPa, fy = 420 MPa. Per ACI 318-19."
+  },
+  steelBeam: {
+    US: "Select a W-shape steel beam for a simply supported span of 30 ft with factored uniform load wu = 3.5 kip/ft. ASTM A992 steel. Check flexure, shear, and deflection per AISC 360-22 LRFD.",
+    SI: "Select a W-shape steel beam for a simply supported span of 9 m with factored uniform load wu = 51 kN/m. ASTM A992 steel (Fy = 345 MPa). Check flexure, shear, and deflection per AISC 360-22 LRFD."
+  },
+  steelColumn: {
+    US: "Design a W-shape steel column for Pu = 500 kips, KL = 14 ft, ASTM A992. Per AISC 360-22. Show available compressive strength and check adequacy.",
+    SI: "Design a W-shape steel column for Pu = 2200 kN, KL = 4.3 m, ASTM A992 (Fy = 345 MPa). Per AISC 360-22. Show available compressive strength and check adequacy."
+  },
+  momentConnection: {
+    US: "Design a bolted end-plate moment connection for Mu = 200 kip-ft and Vu = 40 kips. Use 3/4 in A325 bolts, ASTM A992 steel. Per AISC 360-22 and AISC Design Guide 4.",
+    SI: "Design a bolted end-plate moment connection for Mu = 270 kN·m and Vu = 180 kN. Use M20 (A325 equivalent) bolts, ASTM A992 steel (Fy = 345 MPa). Per AISC 360-22 and AISC Design Guide 4."
+  },
+  shearWall: {
+    US: "Perform a shear wall design check for an RC shear wall: Vu = 180 kips, hw = 20 ft, lw = 12 ft, thickness = 8 in, f'c = 4000 psi, fy = 60 ksi. Per ACI 318-19 Chapter 11 and 18.",
+    SI: "Perform a shear wall design check for an RC shear wall: Vu = 800 kN, hw = 6 m, lw = 3.7 m, thickness = 200 mm, f'c = 28 MPa, fy = 420 MPa. Per ACI 318-19 Chapter 11 and 18."
+  },
+  steelBeamCheck: {
+    US: "Design a W18x50 steel beam check for Mu = 250 kip-ft, Vu = 60 kips, span = 24 ft. ASTM A992, AISC 360-22 LRFD.",
+    SI: "Check a W460x74 steel beam for Mu = 340 kN·m, Vu = 270 kN, span = 7.3 m. ASTM A992 (Fy = 345 MPa), AISC 360-22 LRFD."
+  },
+  rcBeamRebar: {
+    US: "Size RC beam reinforcement for Mu = 200 kip-ft, b=12in, d=20in, f'c=4000psi, fy=60ksi. ACI 318-19.",
+    SI: "Size RC beam reinforcement for Mu = 270 kN·m, b=300mm, d=510mm, f'c=28 MPa, fy=420 MPa. ACI 318-19."
+  },
+  loadCombinations: {
+    US: "What are the AISC LRFD load combinations per ASCE 7-22? Show all combos with explanations in US Customary units.",
+    SI: "What are the AISC LRFD load combinations per ASCE 7-22? Show all combos with explanations in SI/Metric units."
+  },
+  asdVsLrfd: {
+    US: "Compare ASD vs LRFD design philosophy for steel structures using US Customary units. When should I use each?",
+    SI: "Compare ASD vs LRFD design philosophy for steel structures using SI/Metric units. When should I use each?"
+  }
+};
+
+function getPrompt(key) {
+  const p = PROMPTS[key];
+  if (!p) return key;
+  return p[units] || p['US'];
+}
+
+function buildSystemPrompt() {
+  const codeList = [];
+  if (activeCodes.ACI) codeList.push('ACI 318-19 (Reinforced Concrete)');
+  if (activeCodes.AISC) codeList.push('AISC 360-22 (Steel Construction)');
+  if (activeCodes.AISCS) codeList.push('AISC 341-22 (Seismic Provisions)');
+  if (activeCodes.ASCE) codeList.push('ASCE 7-22 (Minimum Design Loads)');
+  const unitSystem = units === 'US' ? 'US Customary (kips, inches, ft, psi, ksi)' : 'SI (kN, mm, m, MPa)';
+
+  return `You are StructureAI, an expert structural engineering design assistant specializing in reinforced concrete (RC) and structural steel design. You perform rigorous, code-compliant structural calculations.
+
+ACTIVE DESIGN CODES: ${codeList.join(', ')}
+UNIT SYSTEM: ${unitSystem}
+
+## YOUR ROLE
+- Perform complete structural design calculations with every step shown
+- Reference specific code sections (e.g., "ACI 318-19 §9.3.1.1", "AISC 360-22 Chapter F")
+- Use LRFD as default for steel; Strength Design for RC
+- Flag any assumptions made
+- Warn when a problem may require more rigorous analysis
+- Always use the specified unit system (${unitSystem}) consistently throughout
+
+## CALCULATION FORMAT
+Structure responses as:
+
+**1. GIVEN / INPUT** — List all given values.
+**2. MATERIAL & CODE PROPERTIES** — Material properties and code limits.
+**3. STEP-BY-STEP CALCULATIONS** — Every formula with variable substitution and numeric result. Use code blocks for equations.
+**4. CODE CHECKS** — Each limit state: Demand ≤ Capacity with ✅ PASS or ❌ FAIL
+**5. SUMMARY** — Compact table of all checks.
+**6. CROSS-SECTION DATA** — At the end of your response, ALWAYS output a JSON block in a code block labeled \`\`\`section-data that contains the cross-section dimensions and reinforcement details extracted from your design. This will be used to automatically draw the section diagram. Use this schema:
+
+For RC Beam:
+\`\`\`section-data
+{
+  "type": "rc_beam",
+  "label": "RC Beam 14×22 in",
+  "b": 14, "h": 22, "d": 19.5, "cover": 1.5,
+  "bars_tension": { "count": 4, "size": "#8", "dia": 1.0 },
+  "bars_compression": { "count": 2, "size": "#5", "dia": 0.625 },
+  "stirrups": { "size": "#4", "spacing": 6 },
+  "fc": 4000, "fy": 60000,
+  "props": [
+    {"label": "Mu", "value": "150 kip-ft"},
+    {"label": "φMn", "value": "165 kip-ft"},
+    {"label": "ρ", "value": "0.0147"},
+    {"label": "ρmax", "value": "0.0213"}
+  ]
+}
+\`\`\`
+
+For RC Column:
+\`\`\`section-data
+{
+  "type": "rc_column",
+  "label": "RC Column 14×14 in",
+  "b": 14, "h": 14, "cover": 1.5,
+  "bars": { "count": 8, "size": "#9", "dia": 1.128 },
+  "ties": { "size": "#4", "spacing": 12 },
+  "fc": 5000, "fy": 60000,
+  "props": [
+    {"label": "Pu", "value": "400 kips"},
+    {"label": "φPn", "value": "482 kips"},
+    {"label": "ρg", "value": "0.032"}
+  ]
+}
+\`\`\`
+
+For W-Shape Steel Beam:
+\`\`\`section-data
+{
+  "type": "w_beam",
+  "label": "W18×50",
+  "d": 17.99, "bf": 7.495, "tf": 0.57, "tw": 0.355,
+  "span": 30, "fy": 50,
+  "props": [
+    {"label": "Mu", "value": "250 kip-ft"},
+    {"label": "φMn", "value": "294 kip-ft"},
+    {"label": "Vu", "value": "60 kips"},
+    {"label": "φVn", "value": "193 kips"}
+  ]
+}
+\`\`\`
+
+For W-Shape Steel Column:
+\`\`\`section-data
+{
+  "type": "w_column",
+  "label": "W10×49",
+  "d": 9.98, "bf": 10.0, "tf": 0.56, "tw": 0.34,
+  "fy": 50,
+  "props": [
+    {"label": "Pu", "value": "500 kips"},
+    {"label": "φPn", "value": "542 kips"},
+    {"label": "KL/r", "value": "68.4"}
+  ]
+}
+\`\`\`
+
+For One-Way Slab:
+\`\`\`section-data
+{
+  "type": "slab",
+  "label": "One-Way Slab",
+  "h": 7, "width": 120, "cover": 0.75,
+  "bars": { "count": 6, "size": "#4", "spacing": 12, "dia": 0.5 },
+  "temp_bars": { "size": "#3", "spacing": 18 },
+  "fc": 4000, "fy": 60000,
+  "props": [
+    {"label": "wu", "value": "450 psf"},
+    {"label": "Mu", "value": "11.8 kip-ft/ft"},
+    {"label": "As", "value": "0.20 in²/ft"}
+  ]
+}
+\`\`\`
+
+For Spread Footing:
+\`\`\`section-data
+{
+  "type": "footing",
+  "label": "Spread Footing",
+  "B": 10, "L": 10, "h": 18, "col_b": 14, "col_h": 14, "cover": 3,
+  "bars_bot_x": { "count": 9, "size": "#7", "dia": 0.875 },
+  "bars_bot_y": { "count": 9, "size": "#7", "dia": 0.875 },
+  "fc": 3000, "fy": 60000,
+  "props": [
+    {"label": "P", "value": "300 kips"},
+    {"label": "Area req", "value": "100 ft²"},
+    {"label": "qu", "value": "3.84 ksf"}
+  ]
+}
+\`\`\`
+
+Always output this JSON block. Use realistic values extracted from your calculations. All dimensions in inches (US) or mm (SI). Note which system in a "units" field: "us" or "si".
+
+**7. DESIGN RECOMMENDATION** — Final section / reinforcement / notes.
+
+## RULES
+- Always cite specific code clauses
+- Show ALL intermediate numeric values
+- If data is missing, ask before proceeding
+- Note when licensed PE review is required
+- If design FAILS, suggest remediation
+- IMPORTANT: Output all mathematical equations as plain text only. STRICTLY DO NOT use LaTeX formatting (e.g., no $, $$, \\frac, \\epsilon).
+
+## TONE
+Professional, precise, and educational. Explain the "why" behind each check.`;
+}
+
+// ══════════════════════════════════════════════════════════
+//  GEMINI API INTEGRATION
+// ══════════════════════════════════════════════════════════
+async function callGemini(userMessage) {
+  // เพิ่มข้อความของผู้ใช้ลงประวัติ
+  conversationHistory.push({ 
+    role: 'user', 
+    parts: [{ text: userMessage }] 
+  });
+
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${GEMINI_API_KEY}`;
+
+  const payload = {
+    systemInstruction: {
+      parts: [{ text: buildSystemPrompt() }]
+    },
+    contents: conversationHistory,
+    generationConfig: {
+      maxOutputTokens: 4096,
+    }
+  };
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+
+  if (!response.ok) {
+    const err = await response.json();
+    throw new Error(err.error?.message || 'Gemini API Error');
+  }
+
+  const data = await response.json();
+  const assistantMsg = data.candidates[0].content.parts[0].text;
+  
+  // บันทึกคำตอบกลับลงประวัติ
+  conversationHistory.push({ 
+    role: 'model', 
+    parts: [{ text: assistantMsg }] 
+  });
+
+  return assistantMsg;
+}
+
+// ══════════════════════════════════════════════════════════
+//  CROSS-SECTION SVG GENERATORS
+// ══════════════════════════════════════════════════════════
+
+function parseSectionData(text) {
+  const match = text.match(/```section-data\s*([\s\S]*?)```/);
+  if (!match) return null;
+  try { return JSON.parse(match[1].trim()); }
+  catch(e) { return null; }
+}
+
+function removeSectionDataBlock(text) {
+  return text.replace(/```section-data[\s\S]*?```/g, '').trim();
+}
+
+// ─── RC Beam ────────────────────────────────────────────
+function drawRCBeam(sd) {
+  const W=260, H=200, pad=20;
+  const scaleX = (W - 2*pad) / sd.b;
+  const scaleY = (H - 2*pad) / sd.h;
+  const scale = Math.min(scaleX, scaleY);
+  const bw = sd.b * scale, bh = sd.h * scale;
+  const ox = (W - bw)/2, oy = (H - bh)/2;
+  const cover = sd.cover * scale;
+  const hasComp = sd.bars_compression && sd.bars_compression.count > 0;
+
+  let svg = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="font-family:'DM Mono',monospace">
+  <defs>
+    <pattern id="hatch" patternUnits="userSpaceOnUse" width="6" height="6" patternTransform="rotate(45)">
+      <line x1="0" y1="0" x2="0" y2="6" stroke="#c8a882" stroke-width="0.5" opacity="0.3"/>
+    </pattern>
+  </defs>`;
+
+  // Concrete body
+  svg += `<rect x="${ox}" y="${oy}" width="${bw}" height="${bh}" fill="url(#hatch)" stroke="#c8a882" stroke-width="1.5" rx="1"/>`;
+
+  // Cover dashed outline for effective depth
+  const deff = sd.d * scale;
+  svg += `<line x1="${ox+4}" y1="${oy + cover}" x2="${ox+bw-4}" y2="${oy + cover}" stroke="#e8a020" stroke-width="0.6" stroke-dasharray="3,3" opacity="0.6"/>`;
+  svg += `<line x1="${ox+4}" y1="${oy + deff}" x2="${ox+bw-4}" y2="${oy + deff}" stroke="#4a9eff" stroke-width="0.6" stroke-dasharray="3,3" opacity="0.5"/>`;
+
+  // Stirrups
+  const st = sd.stirrups;
+  if (st) {
+    const sw = 3;
+    svg += `<rect x="${ox+cover-sw/2}" y="${oy+cover-sw/2}" width="${bw-2*cover+sw}" height="${bh-2*cover+sw}" fill="none" stroke="#a78bfa" stroke-width="${sw}" rx="2"/>`;
+  }
+
+  // Tension bars (bottom)
+  if (sd.bars_tension) {
+    const bt = sd.bars_tension;
+    const barR = Math.min((bt.dia||0.75)*scale/2, 7);
+    const totalBars = bt.count;
+    const spacing = (bw - 2*cover - 2*barR*2) / (totalBars - 1 || 1);
+    const by = oy + bh - cover - barR;
+    for(let i=0; i<totalBars; i++) {
+      const bx = ox + cover + barR + (totalBars > 1 ? i*spacing : (bw-2*cover)/2 - barR);
+      svg += `<circle cx="${bx}" cy="${by}" r="${barR}" fill="#c8a882" stroke="#0a0c0f" stroke-width="1"/>`;
+    }
+    // Label
+    svg += `<text x="${ox+bw/2}" y="${oy+bh+12}" text-anchor="middle" fill="#c8a882" font-size="8" letter-spacing="0.5">${totalBars}−${bt.size||''}</text>`;
+  }
+
+  // Compression bars (top)
+  if (hasComp) {
+    const bc = sd.bars_compression;
+    const barR = Math.min((bc.dia||0.625)*scale/2, 5);
+    const totalBars = bc.count;
+    const spacing = (bw - 2*cover - 2*barR*2) / (totalBars - 1 || 1);
+    const by = oy + cover + barR;
+    for(let i=0; i<totalBars; i++) {
+      const bx = ox + cover + barR + (totalBars > 1 ? i*spacing : (bw-2*cover)/2 - barR);
+      svg += `<circle cx="${bx}" cy="${by}" r="${barR}" fill="#4a9eff" stroke="#0a0c0f" stroke-width="1"/>`;
+    }
+    svg += `<text x="${ox+bw/2}" y="${oy-6}" text-anchor="middle" fill="#4a9eff" font-size="8" letter-spacing="0.5">${totalBars}−${bc.size||''} (comp)</text>`;
+  }
+
+  // Dimension lines
+  // Width arrow
+  const arrY = oy + bh + 20;
+  svg += dimArrow(ox, arrY, ox+bw, arrY, `b = ${sd.b}"`, '#e8eaf0', W);
+  // Height arrow
+  const arrX = ox - 16;
+  svg += dimArrowV(arrX, oy, oy+bh, `h = ${sd.h}"`, '#e8eaf0', H);
+
+  // d annotation
+  svg += `<text x="${ox+bw+5}" y="${oy+deff+3}" fill="#4a9eff" font-size="7.5">d=${sd.d}"</text>`;
+
+  svg += `</svg>`;
+  return svg;
+}
+
+// ─── RC Column ───────────────────────────────────────────
+function drawRCColumn(sd) {
+  const W=240, H=240, pad=30;
+  const size = Math.min(W - 2*pad, H - 2*pad);
+  const scaleF = size / Math.max(sd.b, sd.h);
+  const bw = sd.b * scaleF, bh = sd.h * scaleF;
+  const ox = (W-bw)/2, oy = (H-bh)/2;
+  const cover = sd.cover * scaleF;
+
+  let svg = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="font-family:'DM Mono',monospace">
+  <defs>
+    <pattern id="hatch2" patternUnits="userSpaceOnUse" width="6" height="6" patternTransform="rotate(45)">
+      <line x1="0" y1="0" x2="0" y2="6" stroke="#c8a882" stroke-width="0.5" opacity="0.3"/>
+    </pattern>
+  </defs>`;
+
+  svg += `<rect x="${ox}" y="${oy}" width="${bw}" height="${bh}" fill="url(#hatch2)" stroke="#c8a882" stroke-width="1.5"/>`;
+
+  // Ties
+  const tieOff = cover - 2;
+  svg += `<rect x="${ox+tieOff}" y="${oy+tieOff}" width="${bw-2*tieOff}" height="${bh-2*tieOff}" fill="none" stroke="#a78bfa" stroke-width="2.5" rx="1"/>`;
+
+  // Bars - distribute around perimeter
+  if (sd.bars) {
+    const bars = sd.bars;
+    const barR = Math.min((bars.dia||1.0)*scaleF/2, 7);
+    const positions = generateColumnBarPositions(sd.b, sd.h, sd.cover, bars.count, scaleF, ox, oy, bw, bh);
+    positions.forEach(([bx,by]) => {
+      svg += `<circle cx="${bx}" cy="${by}" r="${barR}" fill="#c8a882" stroke="#0a0c0f" stroke-width="1"/>`;
+    });
+    svg += `<text x="${W/2}" y="${oy+bh+14}" text-anchor="middle" fill="#c8a882" font-size="8">${bars.count}−${bars.size||''} (ρg=${(sd.props?.find(p=>p.label==='ρg')?.value||'?')})</text>`;
+  }
+
+  // Dimensions
+  svg += dimArrow(ox, oy+bh+22, ox+bw, oy+bh+22, `b = ${sd.b}"`, '#e8eaf0', W);
+  svg += dimArrowV(ox-18, oy, oy+bh, `h = ${sd.h}"`, '#e8eaf0', H);
+
+  svg += `</svg>`;
+  return svg;
+}
+
+function generateColumnBarPositions(b, h, cover, count, scale, ox, oy, bw, bh) {
+  const c = cover * scale + 8;
+  const positions = [];
+  const corners = [[ox+c, oy+c],[ox+bw-c, oy+c],[ox+bw-c, oy+bh-c],[ox+c, oy+bh-c]];
+  const perRow = Math.ceil((count-4)/4);
+  if(count <= 4) return corners.slice(0, count);
+
+  positions.push(...corners);
+  const extra = count - 4;
+  const perSide = Math.ceil(extra/4);
+  const sides = [
+    {from:[corners[0][0],corners[0][1]], to:[corners[1][0],corners[1][1]]},
+    {from:[corners[1][0],corners[1][1]], to:[corners[2][0],corners[2][1]]},
+    {from:[corners[3][0],corners[3][1]], to:[corners[2][0],corners[2][1]]},
+    {from:[corners[0][0],corners[0][1]], to:[corners[3][0],corners[3][1]]}
+  ];
+  let placed=0;
+  for(let s=0; s<sides.length && placed<extra; s++){
+    const {from,to} = sides[s];
+    for(let i=1; i<=perSide && placed<extra; i++){
+      const t = i/(perSide+1);
+      positions.push([from[0]+(to[0]-from[0])*t, from[1]+(to[1]-from[1])*t]);
+      placed++;
+    }
+  }
+  return positions;
+}
+
+// ─── W-Shape Beam / Column ────────────────────────────────
+function drawWShape(sd) {
+  const W=260, H=220, pad=20;
+  const d=sd.d, bf=sd.bf, tf=sd.tf, tw=sd.tw;
+  const scaleY = (H-2*pad-30)/d;
+  const scaleX = Math.min((W-2*pad)/bf, scaleY*2);
+  const scale = Math.min(scaleX, scaleY);
+  const dS=d*scale, bfS=bf*scale, tfS=Math.max(tf*scale,4), twS=Math.max(tw*scale,3);
+  const ox=(W-bfS)/2, oy=(H-dS)/2;
+
+  let svg = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="font-family:'DM Mono',monospace">`;
+
+  // W-shape: top flange, web, bottom flange
+  const steelColor = '#4a9eff';
+  const webX = ox + (bfS-twS)/2;
+
+  // Top flange
+  svg += `<rect x="${ox}" y="${oy}" width="${bfS}" height="${tfS}" fill="${steelColor}" opacity="0.85" rx="1"/>`;
+  // Web
+  svg += `<rect x="${webX}" y="${oy+tfS}" width="${twS}" height="${dS-2*tfS}" fill="${steelColor}" opacity="0.7"/>`;
+  // Bottom flange
+  svg += `<rect x="${ox}" y="${oy+dS-tfS}" width="${bfS}" height="${tfS}" fill="${steelColor}" opacity="0.85" rx="1"/>`;
+
+  // Fillet radii hint
+  svg += `<circle cx="${webX}" cy="${oy+tfS+4}" r="3" fill="none" stroke="${steelColor}" stroke-width="1" opacity="0.4"/>`;
+  svg += `<circle cx="${webX+twS}" cy="${oy+tfS+4}" r="3" fill="none" stroke="${steelColor}" stroke-width="1" opacity="0.4"/>`;
+
+  // Dimension lines
+  svg += dimArrow(ox, oy+dS+18, ox+bfS, oy+dS+18, `bf = ${bf}"`, '#e8eaf0', W);
+  svg += dimArrowV(ox-16, oy, oy+dS, `d = ${d}"`, '#e8eaf0', H);
+
+  // tf and tw labels
+  svg += `<text x="${ox+bfS+4}" y="${oy+tfS/2+3}" fill="#e8a020" font-size="7.5" font-family="'DM Mono',monospace">tf=${tf}"</text>`;
+  svg += `<text x="${W/2+twS/2+4}" y="${oy+dS/2+3}" fill="#e8a020" font-size="7.5" font-family="'DM Mono',monospace">tw=${tw}"</text>`;
+
+  svg += `</svg>`;
+  return svg;
+}
+
+// ─── Slab ────────────────────────────────────────────────
+function drawSlab(sd) {
+  const W=280, H=140, pad=20;
+  const slabH = sd.h;
+  const dispW = W - 2*pad;
+  const scale = Math.min((H-2*pad-20)/slabH, 3);
+  const sh = slabH * scale;
+  const ox=pad, oy=(H-sh)/2;
+
+  let svg = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="font-family:'DM Mono',monospace">
+  <defs>
+    <pattern id="hatch3" patternUnits="userSpaceOnUse" width="6" height="6" patternTransform="rotate(45)">
+      <line x1="0" y1="0" x2="0" y2="6" stroke="#c8a882" stroke-width="0.5" opacity="0.3"/>
+    </pattern>
+  </defs>`;
+
+  svg += `<rect x="${ox}" y="${oy}" width="${dispW}" height="${sh}" fill="url(#hatch3)" stroke="#c8a882" stroke-width="1.5"/>`;
+
+  // Bottom bars
+  if(sd.bars) {
+    const bars = sd.bars;
+    const barR = Math.min((bars.dia||0.5)*scale/2 + 1, 5);
+    const cover = sd.cover * scale;
+    const by = oy + sh - cover - barR;
+    const spacing = (bars.spacing||12) * scale;
+    let bx = ox + cover + barR;
+    while(bx < ox+dispW-cover) {
+      svg += `<circle cx="${bx}" cy="${by}" r="${barR}" fill="#c8a882" stroke="#0a0c0f" stroke-width="0.8"/>`;
+      bx += spacing;
+    }
+    svg += `<text x="${W/2}" y="${oy+sh+13}" text-anchor="middle" fill="#c8a882" font-size="8">${bars.size||''} @ ${bars.spacing||'?'}" (bottom)</text>`;
+  }
+
+  // Temp bars (top, perpendicular shown as dashed line)
+  if(sd.temp_bars) {
+    const cover = sd.cover * scale;
+    const ty = oy + cover + 3;
+    svg += `<line x1="${ox+10}" y1="${ty}" x2="${ox+dispW-10}" y2="${ty}" stroke="#a78bfa" stroke-width="2" stroke-dasharray="4,4"/>`;
+    svg += `<text x="${W/2}" y="${oy-5}" text-anchor="middle" fill="#a78bfa" font-size="7.5">${sd.temp_bars.size||''} @ ${sd.temp_bars.spacing||'?'}" temp/shrinkage (transverse)</text>`;
+  }
+
+  // Dimensions
+  svg += dimArrowV(ox-14, oy, oy+sh, `h=${sd.h}"`, '#e8eaf0', H);
+
+  svg += `</svg>`;
+  return svg;
+}
+
+// ─── Footing ─────────────────────────────────────────────
+function drawFooting(sd) {
+  const W=280, H=220, pad=24;
+  const fB=sd.B*12, fH=sd.h; // convert ft to in
+  const colB=sd.col_b, colH=sd.col_h||sd.col_b;
+  const dispW=W-2*pad, dispH=H-2*pad-20;
+  const scaleX=dispW/fB, scaleY=dispH/fH;
+  const scale=Math.min(scaleX,scaleY,2);
+  const fw=fB*scale, fh=fH*scale;
+  const cw=colB*scale, ch=colH*scale;
+  const ox=(W-fw)/2, oy=(H-fh)/2+10;
+
+  let svg = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="font-family:'DM Mono',monospace">
+  <defs>
+    <pattern id="hatch4" patternUnits="userSpaceOnUse" width="6" height="6" patternTransform="rotate(45)">
+      <line x1="0" y1="0" x2="0" y2="6" stroke="#c8a882" stroke-width="0.5" opacity="0.3"/>
+    </pattern>
+    <pattern id="soil" patternUnits="userSpaceOnUse" width="8" height="8" patternTransform="rotate(30)">
+      <line x1="0" y1="0" x2="0" y2="8" stroke="#50596a" stroke-width="1.5" opacity="0.4"/>
+    </pattern>
+  </defs>`;
+
+  // Soil
+  svg += `<rect x="${ox-4}" y="${oy+fh}" width="${fw+8}" height="16" fill="url(#soil)" stroke="#50596a" stroke-width="0.5"/>`;
+
+  // Footing body
+  svg += `<rect x="${ox}" y="${oy}" width="${fw}" height="${fh}" fill="url(#hatch4)" stroke="#c8a882" stroke-width="1.5"/>`;
+
+  // Column stub
+  const cx=(W-cw)/2, cy=oy-Math.min(ch,24);
+  svg += `<rect x="${cx}" y="${cy}" width="${cw}" height="${Math.min(ch,24)+2}" fill="rgba(200,168,130,0.3)" stroke="#c8a882" stroke-width="1" stroke-dasharray="3,2"/>`;
+
+  // Bottom bars (X direction shown)
+  if(sd.bars_bot_x) {
+    const cover=sd.cover*scale;
+    const barR=Math.min((sd.bars_bot_x.dia||0.875)*scale/2+0.5, 5);
+    const by=oy+fh-cover-barR;
+    const n=Math.min(sd.bars_bot_x.count,12);
+    const sp=(fw-2*cover-2*barR)/(n-1||1);
+    for(let i=0;i<n;i++){
+      const bx=ox+cover+barR+(n>1?i*sp:fw/2-barR);
+      svg += `<circle cx="${bx}" cy="${by}" r="${barR}" fill="#c8a882" stroke="#0a0c0f" stroke-width="0.8"/>`;
+    }
+    svg += `<text x="${W/2}" y="${oy+fh+28}" text-anchor="middle" fill="#c8a882" font-size="8">${sd.bars_bot_x.count}−${sd.bars_bot_x.size||''} each way</text>`;
+  }
+
+  // Critical section lines (d/2 from face)
+  const cover=sd.cover*scale, deff=(fH-sd.cover)*scale;
+  const halfCol=cw/2;
+  const critX1=(W-fw)/2 + (fw-cw)/2 - deff;
+  const critX2=(W+cw)/2 + deff;
+  if(critX1>ox && critX2<ox+fw){
+    svg += `<line x1="${critX1}" y1="${oy+4}" x2="${critX1}" y2="${oy+fh-4}" stroke="#e8a020" stroke-width="0.8" stroke-dasharray="3,3" opacity="0.7"/>`;
+    svg += `<line x1="${critX2}" y1="${oy+4}" x2="${critX2}" y2="${oy+fh-4}" stroke="#e8a020" stroke-width="0.8" stroke-dasharray="3,3" opacity="0.7"/>`;
+  }
+
+  // Dimensions
+  svg += dimArrow(ox, oy+fh+18, ox+fw, oy+fh+18, `B = ${sd.B} ft`, '#e8eaf0', W);
+  svg += dimArrowV(ox-16, oy, oy+fh, `h=${sd.h}"`, '#e8eaf0', H);
+
+  svg += `</svg>`;
+  return svg;
+}
+
+// ─── Dimension line helpers ──────────────────────────────
+function dimArrow(x1, y, x2, y2, label, color, W) {
+  const arrowLen=6;
+  return `
+  <line x1="${x1}" y1="${y}" x2="${x2}" y2="${y}" stroke="${color}" stroke-width="0.8" opacity="0.5"/>
+  <polygon points="${x1},${y} ${x1+arrowLen},${y-3} ${x1+arrowLen},${y+3}" fill="${color}" opacity="0.5"/>
+  <polygon points="${x2},${y} ${x2-arrowLen},${y-3} ${x2-arrowLen},${y+3}" fill="${color}" opacity="0.5"/>
+  <text x="${(x1+x2)/2}" y="${y+10}" text-anchor="middle" fill="${color}" font-size="8" opacity="0.8" font-family="'DM Mono',monospace">${label}</text>`;
+}
+function dimArrowV(x, y1, y2, label, color, H) {
+  const arrowLen=6;
+  const mid=(y1+y2)/2;
+  return `
+  <line x1="${x}" y1="${y1}" x2="${x}" y2="${y2}" stroke="${color}" stroke-width="0.8" opacity="0.5"/>
+  <polygon points="${x},${y1} ${x-3},${y1+arrowLen} ${x+3},${y1+arrowLen}" fill="${color}" opacity="0.5"/>
+  <polygon points="${x},${y2} ${x-3},${y2-arrowLen} ${x+3},${y2-arrowLen}" fill="${color}" opacity="0.5"/>
+  <text x="${x-4}" y="${mid+3}" text-anchor="end" fill="${color}" font-size="8" opacity="0.8" font-family="'DM Mono',monospace">${label}</text>`;
+}
+
+// ─── Build section panel HTML ─────────────────────────────
+function buildSectionPanel(sd) {
+  if (!sd) return '';
+
+  let svgContent = '';
+  const t = sd.type;
+  if (t === 'rc_beam') svgContent = drawRCBeam(sd);
+  else if (t === 'rc_column') svgContent = drawRCColumn(sd);
+  else if (t === 'w_beam' || t === 'w_column') svgContent = drawWShape(sd);
+  else if (t === 'slab') svgContent = drawSlab(sd);
+  else if (t === 'footing') svgContent = drawFooting(sd);
+  else return '';
+
+  // Build details rows
+  let dims = '';
+  if(t==='rc_beam'){
+    dims += dimRow('Width b', sd.b+'"', 'ACI 318-19 §9.2');
+    dims += dimRow('Total Depth h', sd.h+'"', 'ACI 318-19 §9.3.1');
+    dims += dimRow('Effective Depth d', sd.d+'"', 'h − cover − d_b/2');
+    dims += dimRow('Clear Cover', sd.cover+'"', 'ACI 318-19 Table 20.6.1.3.1');
+    if(sd.stirrups) dims += dimRow('Stirrups', sd.stirrups.size+' @ '+sd.stirrups.spacing+'"', 'Shear reinf.');
+    if(sd.bars_tension) dims += dimRow('Tension Steel', sd.bars_tension.count+'−'+sd.bars_tension.size, 'Bottom, tension zone');
+    if(sd.bars_compression && sd.bars_compression.count>0) dims += dimRow('Compression Steel', sd.bars_compression.count+'−'+sd.bars_compression.size, 'Top, compression zone');
+  } else if(t==='rc_column'){
+    dims += dimRow('Width b', sd.b+'"', 'ACI 318-19 §10.3.1');
+    dims += dimRow('Height h', sd.h+'"', 'ACI 318-19 §10.3.1');
+    dims += dimRow('Clear Cover', sd.cover+'"', 'ACI 318-19 Table 20.6.1.3.1');
+    if(sd.bars) dims += dimRow('Long. Bars', sd.bars.count+'−'+sd.bars.size, 'Longitudinal steel');
+    if(sd.ties) dims += dimRow('Lateral Ties', sd.ties.size+' @ '+sd.ties.spacing+'"', 'ACI 318-19 §25.7.2');
+  } else if(t==='w_beam'||t==='w_column'){
+    dims += dimRow('Section', sd.label, 'AISC Steel Manual');
+    dims += dimRow('Total Depth d', sd.d+'"', 'W-shape dimension');
+    dims += dimRow('Flange Width bf', sd.bf+'"', 'W-shape dimension');
+    dims += dimRow('Flange Thk. tf', sd.tf+'"', 'W-shape dimension');
+    dims += dimRow('Web Thk. tw', sd.tw+'"', 'W-shape dimension');
+    dims += dimRow('Yield Stress Fy', sd.fy+' ksi', 'ASTM A992');
+  } else if(t==='slab'){
+    dims += dimRow('Total Thickness h', sd.h+'"', 'ACI 318-19 Table 7.3.1.1');
+    dims += dimRow('Clear Cover', sd.cover+'"', 'ACI 318-19 Table 20.6.1.3');
+    if(sd.bars) dims += dimRow('Flex. Reinf.', sd.bars.size+' @ '+sd.bars.spacing+'"', 'Bottom, span direction');
+    if(sd.temp_bars) dims += dimRow('Temp/Shrinkage', sd.temp_bars.size+' @ '+sd.temp_bars.spacing+'"', 'ACI 318-19 §24.4.3');
+  } else if(t==='footing'){
+    dims += dimRow('Plan Size B×L', sd.B+'ft × '+(sd.L||sd.B)+'ft', 'ACI 318-19 §13.3');
+    dims += dimRow('Thickness h', sd.h+'"', 'ACI 318-19 §13.3.1.2');
+    dims += dimRow('Clear Cover', sd.cover+'"', 'ACI 318-19 Table 20.6.1.3.1');
+    if(sd.bars_bot_x) dims += dimRow('Flexural Steel', sd.bars_bot_x.count+'−'+sd.bars_bot_x.size+' E.W.', 'Bottom, each way');
+  }
+
+  // Props grid
+  let propsHtml = '';
+  if(sd.props && sd.props.length) {
+    propsHtml = '<div class="section-details-title" style="margin-top:12px">KEY RESULTS</div><div class="prop-grid">';
+    sd.props.forEach(p => {
+      propsHtml += `<div class="prop-item"><div class="prop-item-label">${p.label}</div><div class="prop-item-val">${p.value}</div></div>`;
+    });
+    propsHtml += '</div>';
+  }
+
+  // Legend chips
+  let legend = '<div class="rebar-legend">';
+  if(t==='rc_beam'||t==='rc_column'){
+    legend += `<span class="rebar-chip chip-main">● Longitudinal Bar</span>`;
+    legend += `<span class="rebar-chip chip-shear">▬ Stirrup/Tie</span>`;
+  } else if(t==='slab'){
+    legend += `<span class="rebar-chip chip-main">● Flexural Bar (span dir.)</span>`;
+    legend += `<span class="rebar-chip chip-shear">─ Temp/Shrinkage</span>`;
+  } else if(t==='w_beam'||t==='w_column'){
+    legend += `<span class="rebar-chip chip-steel">■ A992 Steel (Fy=${sd.fy} ksi)</span>`;
+  }
+  legend += '</div>';
+
+  return `<div class="section-panel">
+    <div class="section-panel-header">
+      <div class="section-panel-title">Cross-Section Diagram</div>
+      <div class="section-panel-sub">${sd.label||''}</div>
+    </div>
+    <div class="section-panel-body">
+      <div class="section-svg-wrap">${svgContent}</div>
+      <div class="section-details">
+        <div>
+          <div class="section-details-title">Section Dimensions</div>
+          ${dims}
+        </div>
+        ${legend}
+        ${propsHtml}
+      </div>
+    </div>
+  </div>`;
+}
+
+function dimRow(label, value, code) {
+  return `<div class="dim-row">
+    <span class="dim-label">${label}</span>
+    <span>
+      <span class="dim-value">${value}</span>
+      <span class="dim-code" style="margin-left:8px">${code}</span>
+    </span>
+  </div>`;
+}
+
+// ══════════════════════════════════════════════════════════
+//  MESSAGE RENDERING
+// ══════════════════════════════════════════════════════════
+function renderMessage(role, text) {
+  const welcome = document.getElementById('welcome');
+  if (welcome) welcome.remove();
+
+  const messagesEl = document.getElementById('messages');
+  const div = document.createElement('div');
+  div.className = `msg ${role}`;
+
+  const avatar = role === 'user' ? '👤' : '⚙️';
+  const roleLabel = role === 'user' ? 'Engineer' : 'StructureAI';
+
+  // Parse and remove section data before rendering text
+  let displayText = text;
+  let sectionHtml = '';
+  if (role === 'ai') {
+    const sd = parseSectionData(text);
+    sectionHtml = buildSectionPanel(sd);
+    displayText = removeSectionDataBlock(text);
+  }
+
+  div.innerHTML = `
+    <div class="msg-avatar ${role}">${avatar}</div>
+    <div class="msg-content">
+      <div class="msg-role">${roleLabel}</div>
+      <div class="msg-body">${formatMessage(displayText)}${sectionHtml}</div>
+    </div>
+  `;
+  messagesEl.appendChild(div);
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+}
+
+function formatMessage(text) {
+  text = text.replace(/```[\w]*\n?([\s\S]*?)```/g, '<div class="calc-block">$1</div>');
+  text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+  text = text.replace(/\*(.*?)\*/g, '<em>$1</em>');
+  text = text.replace(/✅\s*PASS/gi, '<span class="check-pass">✅ PASS</span>');
+  text = text.replace(/❌\s*FAIL/gi, '<span class="check-fail">❌ FAIL</span>');
+  text = text.replace(/⚠️([^\n]*)/g, '<div class="warning-box">⚠️$1</div>');
+  text = text.replace(/^#{1,3}\s+(.+)$/gm, '<h3>$1</h3>');
+  text = text.replace(/\|(.+)\|/g, (match) => {
+    const cells = match.split('|').filter(c => c.trim() && !c.match(/^[\s\-:]+$/));
+    if (!cells.length) return match;
+    return '<div style="font-family:var(--mono);font-size:11px;color:var(--text2);display:flex;flex-wrap:wrap;gap:4px;margin:4px 0">'
+      + cells.map(c => `<span style="min-width:100px;padding:2px 8px;background:var(--surface2);border-radius:3px">${c.trim()}</span>`).join('')
+      + '</div>';
+  });
+  text = text.replace(/\n/g, '<br>');
+  return text;
+}
+
+async function sendMessage(literalText) {
+  if (isThinking) return;
+  let text = literalText;
+  if (!text) {
+    const input = document.getElementById('userInput');
+    text = input.value.trim();
+    if (!text) return;
+    input.value = '';
+    input.style.height = 'auto';
+  }
+  isThinking = true;
+  document.getElementById('sendBtn').disabled = true;
+  renderMessage('user', text);
+  showThinking();
+  try {
+    // ---------------------------------------------
+    // ปรับเปลี่ยนมาเรียกใช้งาน Gemini ตรงนี้
+    // ---------------------------------------------
+    const response = await callGemini(text);
+    hideThinking();
+    renderMessage('ai', response);
+  } catch (err) {
+    hideThinking();
+    const messagesEl = document.getElementById('messages');
+    const div = document.createElement('div');
+    div.className = 'msg ai';
+    div.innerHTML = `
+      <div class="msg-avatar ai">⚙️</div>
+      <div class="msg-content">
+        <div class="msg-role">StructureAI</div>
+        <div class="error-box">❌ Error: ${err.message}</div>
+      </div>`;
+    messagesEl.appendChild(div);
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+  }
+  isThinking = false;
+  document.getElementById('sendBtn').disabled = false;
+  document.getElementById('userInput').focus();
+}
+
+function sendQuick(keyOrText) {
+  const resolved = getPrompt(keyOrText);
+  sendMessage(resolved);
+}
+
+function showThinking() {
+  const messagesEl = document.getElementById('messages');
+  const div = document.createElement('div');
+  div.className = 'thinking';
+  div.id = 'thinkingEl';
+  div.innerHTML = `
+    <div class="msg-avatar ai">⚙️</div>
+    <div>
+      <div class="msg-role" style="color:var(--accent);font-family:var(--mono);font-size:9px;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px">StructureAI</div>
+      <div class="think-dots"><span></span><span></span><span></span></div>
+      <div class="think-label">Computing design checks & drawing section...</div>
+    </div>`;
+  messagesEl.appendChild(div);
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+}
+
+function hideThinking() {
+  const el = document.getElementById('thinkingEl');
+  if (el) el.remove();
+}
+
+function handleKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+}
+
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+}
+
+function setUnit(u) {
+  units = u;
+  document.getElementById('unitUS').classList.toggle('active', u === 'US');
+  document.getElementById('unitSI').classList.toggle('active', u === 'SI');
+}
+
+function toggleCode(code) {
+  const map = { ACI: 'toggleACI', AISC: 'toggleAISC', AISCS: 'toggleAISCS', ASCE: 'toggleASCE' };
+  const el = document.getElementById(map[code]);
+  activeCodes[code] = !activeCodes[code];
+  el.className = activeCodes[code]
+    ? `code-toggle-item ${code === 'ACI' ? 'active-aci' : 'active-aisc'}`
+    : 'code-toggle-item';
+}
+
+function newChat() {
+  // เริ่มบทสนทนาใหม่ โดยล้างประวัติออก
+  conversationHistory = [];
+  document.getElementById('messages').innerHTML = `
+    <div class="welcome" id="welcome">
+      <div class="welcome-icon">🏗️</div>
+      <h1>STRUCTUREAI</h1>
+      <p>AI-powered structural design assistant for RC and Steel structures. Step-by-step calculations per AISC and ACI codes — with automatic cross-section diagrams.</p>
+      <div class="welcome-codes">
+        <span class="code-pill pill-aci">ACI 318-19</span>
+        <span class="code-pill pill-aisc">AISC 360-22</span>
+        <span class="code-pill pill-aisc">AISC 341-22</span>
+        <span class="code-pill pill-aci">LRFD / Strength Design</span>
+      </div>
+    </div>`;
+}
+</script>
+</body>
+</html>
